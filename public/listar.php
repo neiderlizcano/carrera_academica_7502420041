@@ -1,24 +1,35 @@
 <?php
+
+require_once dirname(__DIR__) . '/src/CarreraAcademica/Domain/Entity/CarreraAcademica.php';
+require_once dirname(__DIR__) . '/src/CarreraAcademica/Domain/Repository/CarreraAcademicaRepository.php';
+require_once dirname(__DIR__) . '/src/CarreraAcademica/Application/UseCase/ListarCarreraAcademicaUseCase.php';
 require_once dirname(__DIR__) . '/src/CarreraAcademica/Infrastructure/Persistence/conexion.php';
+require_once dirname(__DIR__) . '/src/CarreraAcademica/Infrastructure/Persistence/MySqlCarreraAcademicaRepository.php';
+
+use Src\CarreraAcademica\Application\UseCase\ListarCarreraAcademicaUseCase;
+use Src\CarreraAcademica\Infrastructure\Persistence\MySqlCarreraAcademicaRepository;
 
 $mensaje = "";
 $tipoMensaje = "";
 
 if (isset($_GET["mensaje"])) {
-    if ($_GET["mensaje"] == "actualizado") {
+    if ($_GET["mensaje"] === "actualizado") {
         $mensaje = "Registro actualizado correctamente.";
         $tipoMensaje = "exito";
-    } elseif ($_GET["mensaje"] == "eliminado") {
+    } elseif ($_GET["mensaje"] === "eliminado") {
         $mensaje = "Registro eliminado correctamente.";
         $tipoMensaje = "exito";
-    } elseif ($_GET["mensaje"] == "error") {
+    } elseif ($_GET["mensaje"] === "error") {
         $mensaje = "Ocurrió un error en la operación.";
         $tipoMensaje = "error";
     }
 }
 
-$sql = "SELECT * FROM carrera_academica ORDER BY id DESC";
-$resultado = $conn->query($sql);
+$repositorio = new MySqlCarreraAcademicaRepository($conn);
+$casoDeUso = new ListarCarreraAcademicaUseCase($repositorio);
+$carreras = $casoDeUso->ejecutar();
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -28,7 +39,9 @@ $resultado = $conn->query($sql);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lista de Carreras Académicas</title>
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             margin: 0;
@@ -164,7 +177,7 @@ $resultado = $conn->query($sql);
     </div>
 
     <div class="contenedor">
-        <?php if ($mensaje != ""): ?>
+        <?php if ($mensaje !== ""): ?>
             <div class="mensaje <?php echo $tipoMensaje; ?>">
                 <?php echo htmlspecialchars($mensaje); ?>
             </div>
@@ -191,29 +204,29 @@ $resultado = $conn->query($sql);
                 <th>Acciones</th>
             </tr>
 
-            <?php if ($resultado && $resultado->num_rows > 0): ?>
-                <?php while ($fila = $resultado->fetch_assoc()): ?>
+            <?php if (!empty($carreras)): ?>
+                <?php foreach ($carreras as $carrera): ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($fila["id"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["nombre"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["numCreditos"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["numAsignaturas"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["numSemestres"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["nivelFormacion"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["titulo"]); ?></td>
-                        <td>$ <?php echo number_format($fila["valorSemestre"], 2, ",", "."); ?></td>
-                        <td><?php echo htmlspecialchars($fila["universidad"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["esAcreditada"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["perfiles"]); ?></td>
-                        <td><?php echo htmlspecialchars($fila["areaConocimiento"]); ?></td>
+                        <td><?php echo htmlspecialchars((string) $carrera->getId()); ?></td>
+                        <td><?php echo htmlspecialchars($carrera->getNombre()); ?></td>
+                        <td><?php echo htmlspecialchars((string) $carrera->getNumCreditos()); ?></td>
+                        <td><?php echo htmlspecialchars((string) $carrera->getNumAsignaturas()); ?></td>
+                        <td><?php echo htmlspecialchars((string) $carrera->getNumSemestres()); ?></td>
+                        <td><?php echo htmlspecialchars($carrera->getNivelFormacion()); ?></td>
+                        <td><?php echo htmlspecialchars($carrera->getTitulo()); ?></td>
+                        <td>$ <?php echo number_format($carrera->getValorSemestre(), 2, ",", "."); ?></td>
+                        <td><?php echo htmlspecialchars($carrera->getUniversidad()); ?></td>
+                        <td><?php echo htmlspecialchars($carrera->getEsAcreditada()); ?></td>
+                        <td><?php echo htmlspecialchars($carrera->getPerfiles()); ?></td>
+                        <td><?php echo htmlspecialchars($carrera->getAreaConocimiento()); ?></td>
                         <td>
                             <div class="acciones">
-                                <a class="btn-editar" href="editar.php?id=<?php echo $fila["id"]; ?>">Editar</a>
-                                <a class="btn-eliminar" href="eliminar.php?id=<?php echo $fila["id"]; ?>" onclick="return confirm('¿Seguro que deseas eliminar este registro?');">Eliminar</a>
+                                <a class="btn-editar" href="editar.php?id=<?php echo $carrera->getId(); ?>">Editar</a>
+                                <a class="btn-eliminar" href="eliminar.php?id=<?php echo $carrera->getId(); ?>" onclick="return confirm('¿Seguro que deseas eliminar este registro?');">Eliminar</a>
                             </div>
                         </td>
                     </tr>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             <?php else: ?>
                 <tr>
                     <td colspan="13" class="sin-registros">No hay registros todavía.</td>
@@ -224,7 +237,3 @@ $resultado = $conn->query($sql);
 
 </body>
 </html>
-
-<?php
-$conn->close();
-?>
