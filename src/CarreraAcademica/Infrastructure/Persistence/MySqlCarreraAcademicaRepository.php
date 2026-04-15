@@ -186,6 +186,17 @@ class MySqlCarreraAcademicaRepository implements CarreraAcademicaRepository
 
     public function eliminar(int $id): bool
     {
+    $sql = "DELETE FROM carrera_academica WHERE id = ?";
+    $stmt = $this->conn->prepare($sql);
+
+    if (!$stmt) {
         return false;
+    }
+
+    $stmt->bind_param("i", $id);
+    $resultado = $stmt->execute();
+    $stmt->close();
+
+    return $resultado;
     }
 }
