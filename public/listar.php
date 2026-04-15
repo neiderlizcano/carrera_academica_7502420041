@@ -1,5 +1,5 @@
 <?php
-require_once("conexion.php");
+require_once dirname(__DIR__) . '/src/CarreraAcademica/Infrastructure/Persistence/conexion.php';
 
 $mensaje = "";
 $tipoMensaje = "";
@@ -28,9 +28,7 @@ $resultado = $conn->query($sql);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lista de Carreras Académicas</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -168,7 +166,7 @@ $resultado = $conn->query($sql);
     <div class="contenedor">
         <?php if ($mensaje != ""): ?>
             <div class="mensaje <?php echo $tipoMensaje; ?>">
-                <?php echo $mensaje; ?>
+                <?php echo htmlspecialchars($mensaje); ?>
             </div>
         <?php endif; ?>
 
@@ -193,21 +191,21 @@ $resultado = $conn->query($sql);
                 <th>Acciones</th>
             </tr>
 
-            <?php if ($resultado->num_rows > 0): ?>
+            <?php if ($resultado && $resultado->num_rows > 0): ?>
                 <?php while ($fila = $resultado->fetch_assoc()): ?>
                     <tr>
-                        <td><?php echo $fila["id"]; ?></td>
-                        <td><?php echo $fila["nombre"]; ?></td>
-                        <td><?php echo $fila["numCreditos"]; ?></td>
-                        <td><?php echo $fila["numAsignaturas"]; ?></td>
-                        <td><?php echo $fila["numSemestres"]; ?></td>
-                        <td><?php echo $fila["nivelFormacion"]; ?></td>
-                        <td><?php echo $fila["titulo"]; ?></td>
+                        <td><?php echo htmlspecialchars($fila["id"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["nombre"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["numCreditos"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["numAsignaturas"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["numSemestres"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["nivelFormacion"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["titulo"]); ?></td>
                         <td>$ <?php echo number_format($fila["valorSemestre"], 2, ",", "."); ?></td>
-                        <td><?php echo $fila["universidad"]; ?></td>
-                        <td><?php echo $fila["esAcreditada"]; ?></td>
-                        <td><?php echo $fila["perfiles"]; ?></td>
-                        <td><?php echo $fila["areaConocimiento"]; ?></td>
+                        <td><?php echo htmlspecialchars($fila["universidad"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["esAcreditada"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["perfiles"]); ?></td>
+                        <td><?php echo htmlspecialchars($fila["areaConocimiento"]); ?></td>
                         <td>
                             <div class="acciones">
                                 <a class="btn-editar" href="editar.php?id=<?php echo $fila["id"]; ?>">Editar</a>
