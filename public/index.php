@@ -1,279 +1,234 @@
 <?php
-$mensaje = "";
-$tipoMensaje = "";
+declare(strict_types=1);
 
-if (isset($_GET["mensaje"])) {
-    if ($_GET["mensaje"] == "ok") {
-        $mensaje = "Registro guardado correctamente.";
-        $tipoMensaje = "exito";
-    } elseif ($_GET["mensaje"] == "error") {
-        $mensaje = "Ocurrió un error al guardar.";
-        $tipoMensaje = "error";
-    } elseif ($_GET["mensaje"] == "vacio") {
-        $mensaje = "Debes completar todos los campos.";
-        $tipoMensaje = "alerta";
+(function (): void {
+    $requestPath = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
+    $publicBase = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php'), '/');
+
+    if ($requestPath !== $publicBase && !str_starts_with($requestPath, $publicBase . '/')) {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+
+        $dest = isset($_SESSION['auth']['id']) ? 'home' : 'auth.login';
+        header('Location: ' . $publicBase . '/index.php?route=' . $dest);
+        exit;
     }
+})();
+
+require_once __DIR__ . '/../Common/ClassLoader.php';
+require_once __DIR__ . '/../Common/DependencyInjection.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Presentation/View.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Presentation/Flash.php';
+
+DependencyInjection::boot();
+Flash::start();
+
+function isLoggedIn(): bool
+{
+    return isset($_SESSION['auth']['id']);
 }
-?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Carrera Académica</title>
-    <style>
-        * { box-sizing: border-box; }
+function buildHomeViewData(?string $message = null): array
+{
+    return array(
+        'pageTitle' => 'Inicio',
+        'message' => $message ?? Flash::message(),
+        'success' => Flash::success(),
+    );
+}
 
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #eaf2ff, #f8fbff);
-            color: #1f2937;
+function buildCreateCarreraViewData(): array
+{
+    return array(
+        'pageTitle' => 'Registrar carrera académica',
+        'message' => Flash::message(),
+        'success' => Flash::success(),
+        'errors' => Flash::errors(),
+        'old' => Flash::old(),
+    );
+}
+
+function getCarreraFormData(): array
+{
+    return array(
+        'id' => trim((string) ($_POST['id'] ?? '')),
+        'nombre' => trim((string) ($_POST['nombre'] ?? '')),
+        'numCreditos' => trim((string) ($_POST['numCreditos'] ?? '')),
+        'numAsignaturas' => trim((string) ($_POST['numAsignaturas'] ?? '')),
+        'numSemestres' => trim((string) ($_POST['numSemestres'] ?? '')),
+        'nivelFormacion' => trim((string) ($_POST['nivelFormacion'] ?? '')),
+        'titulo' => trim((string) ($_POST['titulo'] ?? '')),
+        'valorSemestre' => trim((string) ($_POST['valorSemestre'] ?? '')),
+        'universidad' => trim((string) ($_POST['universidad'] ?? '')),
+        'esAcreditada' => trim((string) ($_POST['esAcreditada'] ?? '')),
+        'perfiles' => trim((string) ($_POST['perfiles'] ?? '')),
+        'areaConocimiento' => trim((string) ($_POST['areaConocimiento'] ?? '')),
+    );
+}
+
+function validateCreateCarreraForm(array $form): array
+{
+    $errors = array();
+
+    $requiredFields = array(
+        'nombre',
+        'numCreditos',
+        'numAsignaturas',
+        'numSemestres',
+        'nivelFormacion',
+        'titulo',
+        'valorSemestre',
+        'universidad',
+        'esAcreditada',
+        'perfiles',
+        'areaConocimiento',
+    );
+
+    foreach ($requiredFields as $field) {
+        if ($form[$field] === '') {
+            $errors[$field] = 'Este campo es obligatorio.';
         }
+    }
 
-        .encabezado {
-            background: #0d6efd;
-            color: white;
-            padding: 25px 20px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
-        }
+    return $errors;
+}
 
-        .encabezado h1 {
-            margin: 0;
-            font-size: 34px;
-        }
+$route = isset($_GET['route']) ? trim((string) $_GET['route']) : 'home';
+$routes = WebRoutes::routes();
 
-        .encabezado p {
-            margin-top: 8px;
-            font-size: 16px;
-            opacity: 0.95;
-        }
+if (!isset($routes[$route])) {
+    http_response_code(404);
+    View::render('home', buildHomeViewData('Ruta no encontrada.'));
+    exit;
+}
 
-        .contenedor {
-            max-width: 950px;
-            margin: 30px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-        }
+$definition = $routes[$route];
+$httpMethod = strtoupper((string) $_SERVER['REQUEST_METHOD']);
 
-        h2 {
-            margin-top: 0;
-            text-align: center;
-            color: #0d3b66;
-        }
+if ($httpMethod !== $definition['method']) {
+    http_response_code(405);
+    View::render('home', buildHomeViewData('Método HTTP no permitido.'));
+    exit;
+}
 
-        .mensaje {
-            padding: 14px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
+$publicActions = array(
+    'home',
+    'login',
+    'authenticate',
+    'logout',
+    'forgot',
+    'forgot.send',
+    'create',
+    'store',
+    'index',
+    'edit',
+    'update',
+    'delete'
+);
 
-        .exito {
-            background-color: #e8f8ee;
-            color: #146c43;
-            border: 1px solid #badbcc;
-        }
+if (!in_array($definition['action'], $publicActions, true) && !isLoggedIn()) {
+    Flash::setMessage('Debes iniciar sesión para acceder a esta sección.');
+    View::redirect('auth.login');
+}
 
-        .error {
-            background-color: #f8d7da;
-            color: #842029;
-            border: 1px solid #f5c2c7;
-        }
+try {
+    switch ($definition['action']) {
+        case 'home':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            View::render('home', $controller->home());
+            break;
 
-        .alerta {
-            background-color: #fff3cd;
-            color: #664d03;
-            border: 1px solid #ffecb5;
-        }
+        case 'create':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            View::render('carreras/create', $controller->create());
+            break;
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-        }
+        case 'store':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $form = getCarreraFormData();
+            $errors = validateCreateCarreraForm($form);
 
-        .campo-completo {
-            grid-column: 1 / -1;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: bold;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            font-size: 15px;
-            outline: none;
-            transition: 0.2s ease;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 110px;
-        }
-
-        .botones {
-            margin-top: 25px;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            text-decoration: none;
-            border: none;
-            padding: 13px 18px;
-            border-radius: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 15px;
-        }
-
-        .btn-guardar {
-            background: #0d6efd;
-            color: white;
-        }
-
-        .btn-ver {
-            background: #198754;
-            color: white;
-            display: inline-block;
-        }
-
-        .pie {
-            text-align: center;
-            margin-top: 18px;
-            color: #6b7280;
-            font-size: 14px;
-        }
-
-        @media (max-width: 768px) {
-            .grid {
-                grid-template-columns: 1fr;
+            if (!empty($errors)) {
+                Flash::setOld($form);
+                Flash::setErrors($errors);
+                Flash::setMessage('Corrige los errores del formulario.');
+                View::redirect('carreras.create');
             }
 
-            .contenedor {
-                margin: 15px;
-                padding: 20px;
+            $controller->store($form);
+            Flash::setSuccess('Carrera académica registrada correctamente.');
+            View::redirect('carreras.index');
+            break;
+
+        case 'index':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            View::render('carreras/list', $controller->index());
+            break;
+
+        case 'edit':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $id = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+            View::render('carreras/edit', $controller->edit($id));
+            break;
+
+        case 'update':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $form = getCarreraFormData();
+            $errors = validateCreateCarreraForm($form);
+
+            if ($form['id'] === '') {
+                $errors['id'] = 'El identificador es obligatorio.';
             }
 
-            .encabezado h1 {
-                font-size: 28px;
+            if (!empty($errors)) {
+                Flash::setOld($form);
+                Flash::setErrors($errors);
+                Flash::setMessage('Corrige los errores del formulario.');
+                View::redirect('carreras.edit&id=' . urlencode($form['id']));
             }
-        }
-    </style>
-</head>
-<body>
 
-    <div class="encabezado">
-        <h1>Sistema de Gestión de Carrera Académica</h1>
-        <p>Registro y administración de información académica con PHP y MySQL</p>
-    </div>
+            $controller->update($form);
+            Flash::setSuccess('Carrera académica actualizada correctamente.');
+            View::redirect('carreras.index');
+            break;
 
-    <div class="contenedor">
-        <h2>Formulario de Registro</h2>
+        case 'delete':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $id = trim((string) ($_POST['id'] ?? ''));
 
-        <?php if ($mensaje != ""): ?>
-            <div class="mensaje <?php echo $tipoMensaje; ?>">
-                <?php echo htmlspecialchars($mensaje); ?>
-            </div>
-        <?php endif; ?>
+            if ($id === '') {
+                Flash::setMessage('El identificador es obligatorio.');
+                View::redirect('carreras.index');
+            }
 
-        <form action="guardar.php" method="POST">
-            <div class="grid">
-                <div>
-                    <label for="nombre">Nombre</label>
-                    <input type="text" name="nombre" id="nombre" required>
-                </div>
+            $controller->delete($id);
+            Flash::setSuccess('Carrera académica eliminada correctamente.');
+            View::redirect('carreras.index');
+            break;
 
-                <div>
-                    <label for="nivelFormacion">Nivel de formación</label>
-                    <select name="nivelFormacion" id="nivelFormacion" required>
-                        <option value="">Seleccione</option>
-                        <option value="Técnico">Técnico</option>
-                        <option value="Tecnólogo">Tecnólogo</option>
-                        <option value="Profesional">Profesional</option>
-                        <option value="Especialización">Especialización</option>
-                        <option value="Maestría">Maestría</option>
-                        <option value="Doctorado">Doctorado</option>
-                    </select>
-                </div>
+        case 'login':
+            View::render('auth/login', array(
+                'pageTitle' => 'Iniciar sesión',
+                'message' => Flash::message(),
+                'success' => Flash::success(),
+            ));
+            break;
 
-                <div>
-                    <label for="numCreditos">Número de créditos</label>
-                    <input type="number" name="numCreditos" id="numCreditos" min="0" required>
-                </div>
+        case 'forgot':
+            View::render('auth/forgot-password', array(
+                'pageTitle' => 'Recuperar contraseña',
+                'message' => Flash::message(),
+                'success' => Flash::success(),
+            ));
+            break;
 
-                <div>
-                    <label for="numAsignaturas">Número de asignaturas</label>
-                    <input type="number" name="numAsignaturas" id="numAsignaturas" min="0" required>
-                </div>
-
-                <div>
-                    <label for="numSemestres">Número de semestres</label>
-                    <input type="number" name="numSemestres" id="numSemestres" min="0" required>
-                </div>
-
-                <div>
-                    <label for="valorSemestre">Valor del semestre</label>
-                    <input type="number" name="valorSemestre" id="valorSemestre" min="0" step="0.01" required>
-                </div>
-
-                <div>
-                    <label for="titulo">Título otorgado</label>
-                    <input type="text" name="titulo" id="titulo" required>
-                </div>
-
-                <div>
-                    <label for="universidad">Universidad</label>
-                    <input type="text" name="universidad" id="universidad" required>
-                </div>
-
-                <div>
-                    <label for="esAcreditada">¿Es acreditada?</label>
-                    <select name="esAcreditada" id="esAcreditada" required>
-                        <option value="">Seleccione</option>
-                        <option value="Sí">Sí</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label for="areaConocimiento">Área de conocimiento</label>
-                    <input type="text" name="areaConocimiento" id="areaConocimiento" required>
-                </div>
-
-                <div class="campo-completo">
-                    <label for="perfiles">Perfiles</label>
-                    <textarea name="perfiles" id="perfiles" required></textarea>
-                </div>
-            </div>
-
-            <div class="botones">
-                <button type="submit" class="btn btn-guardar">Guardar registro</button>
-                <a href="listar.php" class="btn btn-ver">Ver registros</a>
-            </div>
-        </form>
-
-        <div class="pie">
-            Proyecto académico - CRUD de Carrera Académica
-        </div>
-    </div>
-
-</body>
-</html>
+        default:
+            http_response_code(404);
+            View::render('home', buildHomeViewData('Acción no implementada.'));
+            break;
+    }
+} catch (Throwable $e) {
+    Flash::setMessage($e->getMessage());
+    View::redirect('home');
+}
