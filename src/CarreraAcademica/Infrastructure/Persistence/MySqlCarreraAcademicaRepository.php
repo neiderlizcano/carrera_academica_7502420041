@@ -61,7 +61,33 @@ class MySqlCarreraAcademicaRepository implements CarreraAcademicaRepository
 
     public function listar(): array
     {
+    $sql = "SELECT * FROM carrera_academica ORDER BY id DESC";
+    $resultado = $this->conn->query($sql);
+
+    if (!$resultado) {
         return [];
+    }
+
+    $carreras = [];
+
+    while ($fila = $resultado->fetch_assoc()) {
+        $carreras[] = new CarreraAcademica(
+            (int) $fila['id'],
+            $fila['nombre'],
+            (int) $fila['numCreditos'],
+            (int) $fila['numAsignaturas'],
+            (int) $fila['numSemestres'],
+            $fila['nivelFormacion'],
+            $fila['titulo'],
+            (float) $fila['valorSemestre'],
+            $fila['universidad'],
+            $fila['esAcreditada'],
+            $fila['perfiles'],
+            $fila['areaConocimiento']
+        );
+    }
+
+    return $carreras;
     }
 
     public function buscarPorId(int $id): ?CarreraAcademica
