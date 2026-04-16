@@ -21,6 +21,7 @@ require_once __DIR__ . '/../Common/DependencyInjection.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/CreateCarreraAcademicaRequest.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/UpdateCarreraAcademicaRequest.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/LoginWebRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/ForgotPasswordWebRequest.php';
 
 DependencyInjection::boot();
 Flash::start();
@@ -213,57 +214,19 @@ function validateLoginWebRequest(LoginWebRequest $request): array
     return $errors;
 }
 
-function getCarreraFormData(): array
+
+function buildForgotPasswordWebRequestFromPost(): ForgotPasswordWebRequest
 {
-    return array(
-        'id' => trim((string) ($_POST['id'] ?? '')),
-        'nombre' => trim((string) ($_POST['nombre'] ?? '')),
-        'numCreditos' => trim((string) ($_POST['numCreditos'] ?? '')),
-        'numAsignaturas' => trim((string) ($_POST['numAsignaturas'] ?? '')),
-        'numSemestres' => trim((string) ($_POST['numSemestres'] ?? '')),
-        'nivelFormacion' => trim((string) ($_POST['nivelFormacion'] ?? '')),
-        'titulo' => trim((string) ($_POST['titulo'] ?? '')),
-        'valorSemestre' => trim((string) ($_POST['valorSemestre'] ?? '')),
-        'universidad' => trim((string) ($_POST['universidad'] ?? '')),
-        'esAcreditada' => trim((string) ($_POST['esAcreditada'] ?? '')),
-        'perfiles' => trim((string) ($_POST['perfiles'] ?? '')),
-        'areaConocimiento' => trim((string) ($_POST['areaConocimiento'] ?? '')),
+    return new ForgotPasswordWebRequest(
+        trim((string) ($_POST['email'] ?? ''))
     );
 }
 
-function getLoginFormData(): array
+function forgotPasswordWebRequestToArray(ForgotPasswordWebRequest $request): array
 {
     return array(
-        'email' => trim((string) ($_POST['email'] ?? '')),
-        'password' => trim((string) ($_POST['password'] ?? '')),
+        'email' => $request->email(),
     );
-}
-
-function validateCreateCarreraForm(array $form): array
-{
-    $errors = array();
-
-    $requiredFields = array(
-        'nombre',
-        'numCreditos',
-        'numAsignaturas',
-        'numSemestres',
-        'nivelFormacion',
-        'titulo',
-        'valorSemestre',
-        'universidad',
-        'esAcreditada',
-        'perfiles',
-        'areaConocimiento',
-    );
-
-    foreach ($requiredFields as $field) {
-        if ($form[$field] === '') {
-            $errors[$field] = 'Este campo es obligatorio.';
-        }
-    }
-
-    return $errors;
 }
 
 function buildForgotPasswordViewData(): array
@@ -303,16 +266,12 @@ function sendPasswordRecoveryEmail(string $email, string $name, string $tempPass
     @mail($email, $subject, $htmlBody, $headers);
 }
 
-function validateLoginForm(array $form): array
+function validateForgotPasswordWebRequest(ForgotPasswordWebRequest $request): array
 {
     $errors = array();
 
-    if ($form['email'] === '') {
+    if ($request->email() === '') {
         $errors['email'] = 'El correo es obligatorio.';
-    }
-
-    if ($form['password'] === '') {
-        $errors['password'] = 'La contraseña es obligatoria.';
     }
 
     return $errors;
@@ -473,16 +432,17 @@ case 'show':
     break;
 
 case 'forgot.send':
-    $email = trim((string) ($_POST['email'] ?? ''));
+    $request = buildForgotPasswordWebRequestFromPost();
+    $errors = validateForgotPasswordWebRequest($request);
 
-    if ($email === '') {
-        Flash::setOld(array('email' => ''));
-        Flash::setErrors(array('email' => 'El correo es obligatorio.'));
+    if (!empty($errors)) {
+        Flash::setOld(forgotPasswordWebRequestToArray($request));
+        Flash::setErrors($errors);
         Flash::setMessage('Corrige los errores del formulario.');
         View::redirect('auth.forgot');
     }
 
-    $command = new ForgotPasswordCommand($email);
+    $command = new ForgotPasswordCommand($request->email());
     $result = DependencyInjection::getForgotPasswordUseCase()->execute($command);
 
     if ($result !== null) {
@@ -496,12 +456,8 @@ case 'forgot.send':
     Flash::setSuccess('Si el correo existe y está activo, se generó una contraseña temporal y se envió la recuperación.');
     View::redirect('auth.forgot');
     break;
-
-        default:
-            http_response_code(404);
-            View::render('home', buildHomeViewData('Acción no implementada.'));
-            break;
     }
+    
 } catch (Throwable $e) {
     http_response_code(500);
     echo '<pre style="white-space:pre-wrap;font-family:monospace;">';
