@@ -22,6 +22,8 @@ require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/Creat
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/UpdateCarreraAcademicaRequest.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/LoginWebRequest.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/ForgotPasswordWebRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/UserResponse.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Mapper/LoginWebMapper.php';
 
 DependencyInjection::boot();
 Flash::start();
@@ -385,29 +387,31 @@ try {
             break;
 
         case 'authenticate':
-        $request = buildLoginWebRequestFromPost();
-        $errors = validateLoginWebRequest($request);
+            $request = buildLoginWebRequestFromPost();
+            $errors = validateLoginWebRequest($request);
 
-        if (!empty($errors)) {
-            Flash::setOld(loginWebRequestToArray($request));
-            Flash::setErrors($errors);
-            Flash::setMessage('Corrige los errores del formulario.');
-            View::redirect('auth.login');
-        }
+            if (!empty($errors)) {
+                Flash::setOld(loginWebRequestToArray($request));
+                Flash::setErrors($errors);
+                Flash::setMessage('Corrige los errores del formulario.');
+                View::redirect('auth.login');
+            }
 
-        $command = new LoginCommand($request->email(), $request->password());
-        $user = DependencyInjection::getLoginUseCase()->execute($command);
+            $mapper = new LoginWebMapper();
+            $command = $mapper->fromRequestToCommand($request);
+            $userModel = DependencyInjection::getLoginUseCase()->execute($command);
+            $user = $mapper->fromModelToResponse($userModel);
 
-        $_SESSION['auth'] = array(
-            'id' => $user->id()->value(),
-            'name' => $user->name()->value(),
-            'email' => $user->email()->value(),
-            'role' => $user->role(),
-        );
+            $_SESSION['auth'] = array(
+                'id' => $user->getId(),
+                'name' => $user->getName(),
+                'email' => $user->getEmail(),
+                'role' => $user->getRole(),
+            );
 
-        Flash::setSuccess('Inicio de sesión exitoso.');
-        View::redirect('home');
-        break;
+            Flash::setSuccess('Inicio de sesión exitoso.');
+            View::redirect('home');
+            break;
 
         case 'logout':
             unset($_SESSION['auth']);
