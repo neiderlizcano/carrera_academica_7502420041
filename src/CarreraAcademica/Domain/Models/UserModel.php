@@ -65,4 +65,15 @@ final class UserModel
     {
         return $this->status;
     }
+    public function changePassword(UserPassword $password): self
+{
+    return new self(
+        $this->id,
+        $this->name,
+        $this->email,
+        $password,
+        $this->role,
+        $this->status
+    );
+}
 }

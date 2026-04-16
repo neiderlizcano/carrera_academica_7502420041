@@ -111,6 +111,43 @@ function validateCreateCarreraForm(array $form): array
     return $errors;
 }
 
+function buildForgotPasswordViewData(): array
+{
+    return array(
+        'pageTitle' => 'Recuperar contraseña',
+        'message' => Flash::message(),
+        'success' => Flash::success(),
+        'errors' => Flash::errors(),
+        'old' => Flash::old(),
+    );
+}
+
+function sendPasswordRecoveryEmail(string $email, string $name, string $tempPassword): void
+{
+    $templateFile = __DIR__ . '/../Infrastructure/Entrypoints/Web/Presentation/Views/emails/forgot-password.php';
+
+    ob_start();
+    extract(
+        array(
+            'email' => $email,
+            'name' => $name,
+            'tempPassword' => $tempPassword,
+        ),
+        EXTR_SKIP
+    );
+    require $templateFile;
+    $htmlBody = (string) ob_get_clean();
+
+    $subject = '=?UTF-8?B?' . base64_encode('Recuperación de contraseña') . '?=';
+    $headers = implode("\r\n", array(
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'From: Carrera Académica <no-reply@carrera-academica.local>',
+    ));
+
+    @mail($email, $subject, $htmlBody, $headers);
+}
+
 function validateLoginForm(array $form): array
 {
     $errors = array();
@@ -268,32 +305,44 @@ try {
             View::redirect('auth.login');
             break;
 
-        case 'forgot':
-            View::render('auth/forgot-password', array(
-                'pageTitle' => 'Recuperar contraseña',
-                'message' => Flash::message(),
-                'success' => Flash::success(),
-            ));
-            break;
+case 'forgot':
+    View::render('auth/forgot-password', buildForgotPasswordViewData());
+    break;
 
-        case 'forgot.send':
-            Flash::setMessage('Recuperación de contraseña en construcción.');
-            View::redirect('auth.forgot');
-            break;
+case 'forgot.send':
+    $email = trim((string) ($_POST['email'] ?? ''));
+
+    if ($email === '') {
+        Flash::setOld(array('email' => ''));
+        Flash::setErrors(array('email' => 'El correo es obligatorio.'));
+        Flash::setMessage('Corrige los errores del formulario.');
+        View::redirect('auth.forgot');
+    }
+
+    $command = new ForgotPasswordCommand($email);
+    $result = DependencyInjection::getForgotPasswordUseCase()->execute($command);
+
+    if ($result !== null) {
+        sendPasswordRecoveryEmail(
+            (string) $result['email'],
+            (string) $result['name'],
+            (string) $result['tempPassword']
+        );
+    }
+
+    Flash::setSuccess('Si el correo existe y está activo, se generó una contraseña temporal y se envió la recuperación.');
+    View::redirect('auth.forgot');
+    break;
 
         default:
             http_response_code(404);
             View::render('home', buildHomeViewData('Acción no implementada.'));
             break;
     }
-} catch (Throwable $e) {
-    http_response_code(500);
-    echo '<pre style="white-space:pre-wrap;font-family:monospace;">';
-    echo 'ERROR REAL:' . "\n\n";
-    echo htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "\n\n";
-    echo 'Archivo: ' . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8') . "\n";
-    echo 'Línea: ' . $e->getLine() . "\n\n";
-    echo $e->getTraceAsString();
-    echo '</pre>';
-    exit;
+    } catch (Throwable $e) {
+    Flash::setOld(array(
+        'email' => $_POST['email'] ?? ''
+    ));
+    Flash::setMessage($e->getMessage());
+    View::redirect('auth.login');
 }

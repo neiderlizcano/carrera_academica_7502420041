@@ -22,6 +22,11 @@ require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Persistence/MySq
 
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/CarreraAcademicaController.php';
 
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/ForgotPasswordUseCase.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/UpdateUserPort.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/ForgotPasswordCommand.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/ForgotPasswordService.php';
+
 use Src\CarreraAcademica\Application\UseCase\GuardarCarreraAcademicaUseCase;
 use Src\CarreraAcademica\Application\UseCase\ListarCarreraAcademicaUseCase;
 use Src\CarreraAcademica\Application\UseCase\BuscarCarreraAcademicaPorIdUseCase;
@@ -92,5 +97,12 @@ final class DependencyInjection
             self::getActualizarCarreraAcademicaUseCase(),
             self::getEliminarCarreraAcademicaUseCase()
         );
+    }
+    public static function getForgotPasswordUseCase(): ForgotPasswordService
+    {
+    return new ForgotPasswordService(
+        self::getUserRepository(),
+        self::getUserRepository()
+    );
     }
 }
