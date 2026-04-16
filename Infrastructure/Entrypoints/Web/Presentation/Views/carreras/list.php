@@ -67,7 +67,13 @@ require __DIR__ . '/../layouts/menu.php';
                         <td><?php echo htmlspecialchars($carrera->getAreaConocimiento(), ENT_QUOTES, 'UTF-8'); ?></td>
                         <td>
                             <div class="acciones">
-                                <a class="btn btn-alerta" href="?route=carreras.edit&id=<?php echo urlencode((string) $carrera->getId()); ?>">Editar</a>
+                                <a class="btn btn-primario" href="?route=carreras.show&id=<?php echo urlencode((string) $carrera->getId()); ?>">
+                                    Ver detalle
+                                </a>
+
+                                <a class="btn btn-alerta" href="?route=carreras.edit&id=<?php echo urlencode((string) $carrera->getId()); ?>">
+                                    Editar
+                                </a>
 
                                 <form method="POST" action="?route=carreras.delete" onsubmit="return confirm('¿Seguro que deseas eliminar este registro?');">
                                     <input type="hidden" name="id" value="<?php echo htmlspecialchars((string) $carrera->getId(), ENT_QUOTES, 'UTF-8'); ?>">

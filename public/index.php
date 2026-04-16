@@ -308,6 +308,18 @@ try {
 case 'forgot':
     View::render('auth/forgot-password', buildForgotPasswordViewData());
     break;
+    
+case 'show':
+    $controller = DependencyInjection::getCarreraAcademicaController();
+    $id = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+
+    if ($id === '') {
+        Flash::setMessage('Debes seleccionar una carrera para ver el detalle.');
+        View::redirect('carreras.index');
+    }
+
+    View::render('carreras/show', $controller->show($id));
+    break;
 
 case 'forgot.send':
     $email = trim((string) ($_POST['email'] ?? ''));
