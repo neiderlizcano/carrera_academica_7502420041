@@ -1,15 +1,16 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../../../src/CarreraAcademica/Domain/Entity/CarreraAcademica.php';
-
 require_once __DIR__ . '/../../../../src/CarreraAcademica/Application/UseCase/GuardarCarreraAcademicaUseCase.php';
 require_once __DIR__ . '/../../../../src/CarreraAcademica/Application/UseCase/ListarCarreraAcademicaUseCase.php';
 require_once __DIR__ . '/../../../../src/CarreraAcademica/Application/UseCase/BuscarCarreraAcademicaPorIdUseCase.php';
 require_once __DIR__ . '/../../../../src/CarreraAcademica/Application/UseCase/ActualizarCarreraAcademicaUseCase.php';
 require_once __DIR__ . '/../../../../src/CarreraAcademica/Application/UseCase/EliminarCarreraAcademicaUseCase.php';
 
-use Src\CarreraAcademica\Domain\Entity\CarreraAcademica;
+require_once __DIR__ . '/Dto/CreateCarreraAcademicaRequest.php';
+require_once __DIR__ . '/Dto/UpdateCarreraAcademicaRequest.php';
+require_once __DIR__ . '/Mapper/CarreraAcademicaWebMapper.php';
+
 use Src\CarreraAcademica\Application\UseCase\GuardarCarreraAcademicaUseCase;
 use Src\CarreraAcademica\Application\UseCase\ListarCarreraAcademicaUseCase;
 use Src\CarreraAcademica\Application\UseCase\BuscarCarreraAcademicaPorIdUseCase;
@@ -23,19 +24,22 @@ final class CarreraAcademicaController
     private BuscarCarreraAcademicaPorIdUseCase $buscarCarreraAcademicaPorIdUseCase;
     private ActualizarCarreraAcademicaUseCase $actualizarCarreraAcademicaUseCase;
     private EliminarCarreraAcademicaUseCase $eliminarCarreraAcademicaUseCase;
+    private CarreraAcademicaWebMapper $mapper;
 
     public function __construct(
         GuardarCarreraAcademicaUseCase $guardarCarreraAcademicaUseCase,
         ListarCarreraAcademicaUseCase $listarCarreraAcademicaUseCase,
         BuscarCarreraAcademicaPorIdUseCase $buscarCarreraAcademicaPorIdUseCase,
         ActualizarCarreraAcademicaUseCase $actualizarCarreraAcademicaUseCase,
-        EliminarCarreraAcademicaUseCase $eliminarCarreraAcademicaUseCase
+        EliminarCarreraAcademicaUseCase $eliminarCarreraAcademicaUseCase,
+        CarreraAcademicaWebMapper $mapper
     ) {
         $this->guardarCarreraAcademicaUseCase = $guardarCarreraAcademicaUseCase;
         $this->listarCarreraAcademicaUseCase = $listarCarreraAcademicaUseCase;
         $this->buscarCarreraAcademicaPorIdUseCase = $buscarCarreraAcademicaPorIdUseCase;
         $this->actualizarCarreraAcademicaUseCase = $actualizarCarreraAcademicaUseCase;
         $this->eliminarCarreraAcademicaUseCase = $eliminarCarreraAcademicaUseCase;
+        $this->mapper = $mapper;
     }
 
     public function home(): array
@@ -60,20 +64,22 @@ final class CarreraAcademicaController
 
     public function index(): array
     {
+        $models = $this->listarCarreraAcademicaUseCase->ejecutar();
+
         return array(
             'pageTitle' => 'Listado de carreras académicas',
             'message' => Flash::message(),
             'success' => Flash::success(),
-            'carreras' => $this->listarCarreraAcademicaUseCase->ejecutar(),
+            'carreras' => $this->mapper->fromModelsToResponses($models),
         );
     }
 
     public function show(string $id): array
     {
         $idEntero = (int) $id;
-        $carrera = $this->buscarCarreraAcademicaPorIdUseCase->ejecutar($idEntero);
+        $model = $this->buscarCarreraAcademicaPorIdUseCase->ejecutar($idEntero);
 
-        if ($idEntero <= 0 || $carrera === null) {
+        if ($idEntero <= 0 || $model === null) {
             throw new RuntimeException('La carrera académica no fue encontrada.');
         }
 
@@ -81,16 +87,16 @@ final class CarreraAcademicaController
             'pageTitle' => 'Detalle de carrera académica',
             'message' => Flash::message(),
             'success' => Flash::success(),
-            'carrera' => $carrera,
+            'carrera' => $this->mapper->fromModelToResponse($model),
         );
     }
 
     public function edit(string $id): array
     {
         $idEntero = (int) $id;
-        $carrera = $this->buscarCarreraAcademicaPorIdUseCase->ejecutar($idEntero);
+        $model = $this->buscarCarreraAcademicaPorIdUseCase->ejecutar($idEntero);
 
-        if ($idEntero <= 0 || $carrera === null) {
+        if ($idEntero <= 0 || $model === null) {
             throw new RuntimeException('La carrera académica no fue encontrada.');
         }
 
@@ -100,48 +106,20 @@ final class CarreraAcademicaController
             'success' => Flash::success(),
             'errors' => Flash::errors(),
             'old' => Flash::old(),
-            'carrera' => $carrera,
+            'carrera' => $this->mapper->fromModelToResponse($model),
         );
     }
 
-    public function store(array $form): void
+    public function store(CreateCarreraAcademicaRequest $request): void
     {
-        $carreraAcademica = new CarreraAcademica(
-            null,
-            (string) $form['nombre'],
-            (int) $form['numCreditos'],
-            (int) $form['numAsignaturas'],
-            (int) $form['numSemestres'],
-            (string) $form['nivelFormacion'],
-            (string) $form['titulo'],
-            (float) $form['valorSemestre'],
-            (string) $form['universidad'],
-            (string) $form['esAcreditada'],
-            (string) $form['perfiles'],
-            (string) $form['areaConocimiento']
-        );
-
-        $this->guardarCarreraAcademicaUseCase->ejecutar($carreraAcademica);
+        $model = $this->mapper->fromCreateRequestToModel($request);
+        $this->guardarCarreraAcademicaUseCase->ejecutar($model);
     }
 
-    public function update(array $form): void
+    public function update(UpdateCarreraAcademicaRequest $request): void
     {
-        $carreraAcademica = new CarreraAcademica(
-            (int) $form['id'],
-            (string) $form['nombre'],
-            (int) $form['numCreditos'],
-            (int) $form['numAsignaturas'],
-            (int) $form['numSemestres'],
-            (string) $form['nivelFormacion'],
-            (string) $form['titulo'],
-            (float) $form['valorSemestre'],
-            (string) $form['universidad'],
-            (string) $form['esAcreditada'],
-            (string) $form['perfiles'],
-            (string) $form['areaConocimiento']
-        );
-
-        $this->actualizarCarreraAcademicaUseCase->ejecutar($carreraAcademica);
+        $model = $this->mapper->fromUpdateRequestToModel($request);
+        $this->actualizarCarreraAcademicaUseCase->ejecutar($model);
     }
 
     public function delete(string $id): void

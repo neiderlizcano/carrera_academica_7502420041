@@ -18,6 +18,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../Common/ClassLoader.php';
 require_once __DIR__ . '/../Common/DependencyInjection.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/CreateCarreraAcademicaRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/UpdateCarreraAcademicaRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/LoginWebRequest.php';
 
 DependencyInjection::boot();
 Flash::start();
@@ -56,6 +59,158 @@ function buildLoginViewData(): array
         'errors' => Flash::errors(),
         'old' => Flash::old(),
     );
+}
+
+function buildCreateCarreraAcademicaRequestFromPost(): CreateCarreraAcademicaRequest
+{
+    return new CreateCarreraAcademicaRequest(
+        trim((string) ($_POST['nombre'] ?? '')),
+        trim((string) ($_POST['numCreditos'] ?? '')),
+        trim((string) ($_POST['numAsignaturas'] ?? '')),
+        trim((string) ($_POST['numSemestres'] ?? '')),
+        trim((string) ($_POST['nivelFormacion'] ?? '')),
+        trim((string) ($_POST['titulo'] ?? '')),
+        trim((string) ($_POST['valorSemestre'] ?? '')),
+        trim((string) ($_POST['universidad'] ?? '')),
+        trim((string) ($_POST['esAcreditada'] ?? '')),
+        trim((string) ($_POST['perfiles'] ?? '')),
+        trim((string) ($_POST['areaConocimiento'] ?? ''))
+    );
+}
+
+function buildUpdateCarreraAcademicaRequestFromPost(): UpdateCarreraAcademicaRequest
+{
+    return new UpdateCarreraAcademicaRequest(
+        trim((string) ($_POST['id'] ?? '')),
+        trim((string) ($_POST['nombre'] ?? '')),
+        trim((string) ($_POST['numCreditos'] ?? '')),
+        trim((string) ($_POST['numAsignaturas'] ?? '')),
+        trim((string) ($_POST['numSemestres'] ?? '')),
+        trim((string) ($_POST['nivelFormacion'] ?? '')),
+        trim((string) ($_POST['titulo'] ?? '')),
+        trim((string) ($_POST['valorSemestre'] ?? '')),
+        trim((string) ($_POST['universidad'] ?? '')),
+        trim((string) ($_POST['esAcreditada'] ?? '')),
+        trim((string) ($_POST['perfiles'] ?? '')),
+        trim((string) ($_POST['areaConocimiento'] ?? ''))
+    );
+}
+
+function buildLoginWebRequestFromPost(): LoginWebRequest
+{
+    return new LoginWebRequest(
+        trim((string) ($_POST['email'] ?? '')),
+        trim((string) ($_POST['password'] ?? ''))
+    );
+}
+
+function createCarreraRequestToArray(CreateCarreraAcademicaRequest $request): array
+{
+    return array(
+        'nombre' => $request->nombre(),
+        'numCreditos' => $request->numCreditos(),
+        'numAsignaturas' => $request->numAsignaturas(),
+        'numSemestres' => $request->numSemestres(),
+        'nivelFormacion' => $request->nivelFormacion(),
+        'titulo' => $request->titulo(),
+        'valorSemestre' => $request->valorSemestre(),
+        'universidad' => $request->universidad(),
+        'esAcreditada' => $request->esAcreditada(),
+        'perfiles' => $request->perfiles(),
+        'areaConocimiento' => $request->areaConocimiento(),
+    );
+}
+
+function updateCarreraRequestToArray(UpdateCarreraAcademicaRequest $request): array
+{
+    return array(
+        'id' => $request->id(),
+        'nombre' => $request->nombre(),
+        'numCreditos' => $request->numCreditos(),
+        'numAsignaturas' => $request->numAsignaturas(),
+        'numSemestres' => $request->numSemestres(),
+        'nivelFormacion' => $request->nivelFormacion(),
+        'titulo' => $request->titulo(),
+        'valorSemestre' => $request->valorSemestre(),
+        'universidad' => $request->universidad(),
+        'esAcreditada' => $request->esAcreditada(),
+        'perfiles' => $request->perfiles(),
+        'areaConocimiento' => $request->areaConocimiento(),
+    );
+}
+
+function loginWebRequestToArray(LoginWebRequest $request): array
+{
+    return array(
+        'email' => $request->email(),
+    );
+}
+
+function validateCreateCarreraRequest(CreateCarreraAcademicaRequest $request): array
+{
+    $errors = array();
+
+    $fields = array(
+        'nombre' => $request->nombre(),
+        'numCreditos' => $request->numCreditos(),
+        'numAsignaturas' => $request->numAsignaturas(),
+        'numSemestres' => $request->numSemestres(),
+        'nivelFormacion' => $request->nivelFormacion(),
+        'titulo' => $request->titulo(),
+        'valorSemestre' => $request->valorSemestre(),
+        'universidad' => $request->universidad(),
+        'esAcreditada' => $request->esAcreditada(),
+        'perfiles' => $request->perfiles(),
+        'areaConocimiento' => $request->areaConocimiento(),
+    );
+
+    foreach ($fields as $field => $value) {
+        if ($value === '') {
+            $errors[$field] = 'Este campo es obligatorio.';
+        }
+    }
+
+    return $errors;
+}
+
+function validateUpdateCarreraRequest(UpdateCarreraAcademicaRequest $request): array
+{
+    $errors = validateCreateCarreraRequest(
+        new CreateCarreraAcademicaRequest(
+            $request->nombre(),
+            $request->numCreditos(),
+            $request->numAsignaturas(),
+            $request->numSemestres(),
+            $request->nivelFormacion(),
+            $request->titulo(),
+            $request->valorSemestre(),
+            $request->universidad(),
+            $request->esAcreditada(),
+            $request->perfiles(),
+            $request->areaConocimiento()
+        )
+    );
+
+    if ($request->id() === '') {
+        $errors['id'] = 'El identificador es obligatorio.';
+    }
+
+    return $errors;
+}
+
+function validateLoginWebRequest(LoginWebRequest $request): array
+{
+    $errors = array();
+
+    if ($request->email() === '') {
+        $errors['email'] = 'El correo es obligatorio.';
+    }
+
+    if ($request->password() === '') {
+        $errors['password'] = 'La contraseña es obligatoria.';
+    }
+
+    return $errors;
 }
 
 function getCarreraFormData(): array
@@ -209,17 +364,17 @@ try {
 
         case 'store':
             $controller = DependencyInjection::getCarreraAcademicaController();
-            $form = getCarreraFormData();
-            $errors = validateCreateCarreraForm($form);
+            $request = buildCreateCarreraAcademicaRequestFromPost();
+            $errors = validateCreateCarreraRequest($request);
 
             if (!empty($errors)) {
-                Flash::setOld($form);
+                Flash::setOld(createCarreraRequestToArray($request));
                 Flash::setErrors($errors);
                 Flash::setMessage('Corrige los errores del formulario.');
                 View::redirect('carreras.create');
             }
 
-            $controller->store($form);
+            $controller->store($request);
             Flash::setSuccess('Carrera académica registrada correctamente.');
             View::redirect('carreras.index');
             break;
@@ -237,21 +392,17 @@ try {
 
         case 'update':
             $controller = DependencyInjection::getCarreraAcademicaController();
-            $form = getCarreraFormData();
-            $errors = validateCreateCarreraForm($form);
-
-            if ($form['id'] === '') {
-                $errors['id'] = 'El identificador es obligatorio.';
-            }
+            $request = buildUpdateCarreraAcademicaRequestFromPost();
+            $errors = validateUpdateCarreraRequest($request);
 
             if (!empty($errors)) {
-                Flash::setOld($form);
+                Flash::setOld(updateCarreraRequestToArray($request));
                 Flash::setErrors($errors);
                 Flash::setMessage('Corrige los errores del formulario.');
-                View::redirect('carreras.edit&id=' . urlencode($form['id']));
+                View::redirect('carreras.edit&id=' . urlencode($request->id()));
             }
 
-            $controller->update($form);
+            $controller->update($request);
             Flash::setSuccess('Carrera académica actualizada correctamente.');
             View::redirect('carreras.index');
             break;
@@ -275,29 +426,29 @@ try {
             break;
 
         case 'authenticate':
-            $form = getLoginFormData();
-            $errors = validateLoginForm($form);
+        $request = buildLoginWebRequestFromPost();
+        $errors = validateLoginWebRequest($request);
 
-            if (!empty($errors)) {
-                Flash::setOld(array('email' => $form['email']));
-                Flash::setErrors($errors);
-                Flash::setMessage('Corrige los errores del formulario.');
-                View::redirect('auth.login');
-            }
+        if (!empty($errors)) {
+            Flash::setOld(loginWebRequestToArray($request));
+            Flash::setErrors($errors);
+            Flash::setMessage('Corrige los errores del formulario.');
+            View::redirect('auth.login');
+        }
 
-            $command = new LoginCommand($form['email'], $form['password']);
-            $user = DependencyInjection::getLoginUseCase()->execute($command);
+        $command = new LoginCommand($request->email(), $request->password());
+        $user = DependencyInjection::getLoginUseCase()->execute($command);
 
-            $_SESSION['auth'] = array(
-                'id' => $user->id()->value(),
-                'name' => $user->name()->value(),
-                'email' => $user->email()->value(),
-                'role' => $user->role(),
-            );
+        $_SESSION['auth'] = array(
+            'id' => $user->id()->value(),
+            'name' => $user->name()->value(),
+            'email' => $user->email()->value(),
+            'role' => $user->role(),
+        );
 
-            Flash::setSuccess('Inicio de sesión exitoso.');
-            View::redirect('home');
-            break;
+        Flash::setSuccess('Inicio de sesión exitoso.');
+        View::redirect('home');
+        break;
 
         case 'logout':
             unset($_SESSION['auth']);
@@ -351,10 +502,14 @@ case 'forgot.send':
             View::render('home', buildHomeViewData('Acción no implementada.'));
             break;
     }
-    } catch (Throwable $e) {
-    Flash::setOld(array(
-        'email' => $_POST['email'] ?? ''
-    ));
-    Flash::setMessage($e->getMessage());
-    View::redirect('auth.login');
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo '<pre style="white-space:pre-wrap;font-family:monospace;">';
+    echo 'ERROR REAL:' . "\n\n";
+    echo htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "\n\n";
+    echo 'Archivo: ' . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8') . "\n";
+    echo 'Línea: ' . $e->getLine() . "\n\n";
+    echo $e->getTraceAsString();
+    echo '</pre>';
+    exit;
 }

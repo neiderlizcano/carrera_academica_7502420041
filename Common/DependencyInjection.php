@@ -14,18 +14,19 @@ require_once __DIR__ . '/../src/CarreraAcademica/Application/UseCase/EliminarCar
 
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/LoginUseCase.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/GetUserByEmailPort.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/ForgotPasswordUseCase.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/UpdateUserPort.php';
+
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/LoginCommand.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/ForgotPasswordCommand.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/LoginService.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/ForgotPasswordService.php';
 
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Persistence/MySqlCarreraAcademicaRepository.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Persistence/MySqlUserRepository.php';
 
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Mapper/CarreraAcademicaWebMapper.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/CarreraAcademicaController.php';
-
-require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/ForgotPasswordUseCase.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/UpdateUserPort.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/ForgotPasswordCommand.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/ForgotPasswordService.php';
 
 use Src\CarreraAcademica\Application\UseCase\GuardarCarreraAcademicaUseCase;
 use Src\CarreraAcademica\Application\UseCase\ListarCarreraAcademicaUseCase;
@@ -88,6 +89,14 @@ final class DependencyInjection
         return new LoginService(self::getUserRepository());
     }
 
+    public static function getForgotPasswordUseCase(): ForgotPasswordService
+    {
+        return new ForgotPasswordService(
+            self::getUserRepository(),
+            self::getUserRepository()
+        );
+    }
+
     public static function getCarreraAcademicaController(): CarreraAcademicaController
     {
         return new CarreraAcademicaController(
@@ -95,14 +104,8 @@ final class DependencyInjection
             self::getListarCarreraAcademicaUseCase(),
             self::getBuscarCarreraAcademicaPorIdUseCase(),
             self::getActualizarCarreraAcademicaUseCase(),
-            self::getEliminarCarreraAcademicaUseCase()
+            self::getEliminarCarreraAcademicaUseCase(),
+            new CarreraAcademicaWebMapper()
         );
-    }
-    public static function getForgotPasswordUseCase(): ForgotPasswordService
-    {
-    return new ForgotPasswordService(
-        self::getUserRepository(),
-        self::getUserRepository()
-    );
     }
 }
