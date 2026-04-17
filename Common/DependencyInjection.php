@@ -22,13 +22,17 @@ require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Comman
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/LoginService.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/ForgotPasswordService.php';
 
-require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Persistence/MySqlCarreraAcademicaRepository.php';
-
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Config/Connection.php';
+
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Dto/UserPersistenceDto.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Entity/UserEntity.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Mapper/UserPersistenceMapper.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Repository/UserRepositoryMySQL.php';
+
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Dto/CarreraPersistenceDto.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Entity/CarreraEntity.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Mapper/CarreraPersistenceMapper.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Repository/CarreraRepositoryMySQL.php';
 
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Mapper/CarreraAcademicaWebMapper.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/CarreraAcademicaController.php';
@@ -38,7 +42,7 @@ use Src\CarreraAcademica\Application\UseCase\ListarCarreraAcademicaUseCase;
 use Src\CarreraAcademica\Application\UseCase\BuscarCarreraAcademicaPorIdUseCase;
 use Src\CarreraAcademica\Application\UseCase\ActualizarCarreraAcademicaUseCase;
 use Src\CarreraAcademica\Application\UseCase\EliminarCarreraAcademicaUseCase;
-use Src\CarreraAcademica\Infrastructure\Persistence\MySqlCarreraAcademicaRepository;
+use Src\CarreraAcademica\Domain\Repository\CarreraAcademicaRepository;
 
 final class DependencyInjection
 {
@@ -47,16 +51,9 @@ final class DependencyInjection
         ClassLoader::register();
     }
 
-    public static function getConnection(): mysqli
+    public static function getCarreraAcademicaRepository(): CarreraAcademicaRepository
     {
-        require __DIR__ . '/../src/CarreraAcademica/Infrastructure/Persistence/conexion.php';
-
-        return $conn;
-    }
-
-    public static function getCarreraAcademicaRepository(): MySqlCarreraAcademicaRepository
-    {
-        return new MySqlCarreraAcademicaRepository(self::getConnection());
+        return new CarreraRepositoryMySQL();
     }
 
     public static function getUserRepository(): UserRepositoryMySQL
