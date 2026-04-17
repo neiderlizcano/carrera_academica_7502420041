@@ -23,7 +23,12 @@ require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/LoginServi
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/ForgotPasswordService.php';
 
 require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Persistence/MySqlCarreraAcademicaRepository.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Persistence/MySqlUserRepository.php';
+
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Config/Connection.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Dto/UserPersistenceDto.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Entity/UserEntity.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Mapper/UserPersistenceMapper.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persistence/MySQL/Repository/UserRepositoryMySQL.php';
 
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Mapper/CarreraAcademicaWebMapper.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/CarreraAcademicaController.php';
@@ -54,9 +59,9 @@ final class DependencyInjection
         return new MySqlCarreraAcademicaRepository(self::getConnection());
     }
 
-    public static function getUserRepository(): MySqlUserRepository
+    public static function getUserRepository(): UserRepositoryMySQL
     {
-        return new MySqlUserRepository(self::getConnection());
+        return new UserRepositoryMySQL();
     }
 
     public static function getGuardarCarreraAcademicaUseCase(): GuardarCarreraAcademicaUseCase
