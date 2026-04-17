@@ -3,13 +3,21 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../Config/Connection.php';
 require_once __DIR__ . '/../Mapper/CarreraPersistenceMapper.php';
-require_once __DIR__ . '/../../../../../Domain/Repository/CarreraAcademicaRepository.php';
-require_once __DIR__ . '/../../../../../Domain/Entity/CarreraAcademica.php';
 
-use Src\CarreraAcademica\Domain\Entity\CarreraAcademica;
-use Src\CarreraAcademica\Domain\Repository\CarreraAcademicaRepository;
+require_once __DIR__ . '/../../../../../Application/Ports/Out/SaveCarreraAcademicaPort.php';
+require_once __DIR__ . '/../../../../../Application/Ports/Out/UpdateCarreraAcademicaPort.php';
+require_once __DIR__ . '/../../../../../Application/Ports/Out/DeleteCarreraAcademicaPort.php';
+require_once __DIR__ . '/../../../../../Application/Ports/Out/GetCarreraAcademicaByIdPort.php';
+require_once __DIR__ . '/../../../../../Application/Ports/Out/GetAllCarrerasAcademicasPort.php';
 
-final class CarreraRepositoryMySQL implements CarreraAcademicaRepository
+require_once __DIR__ . '/../../../../../Domain/Models/CarreraAcademicaModel.php';
+
+final class CarreraRepositoryMySQL implements
+    SaveCarreraAcademicaPort,
+    UpdateCarreraAcademicaPort,
+    DeleteCarreraAcademicaPort,
+    GetCarreraAcademicaByIdPort,
+    GetAllCarrerasAcademicasPort
 {
     private mysqli $conn;
     private CarreraPersistenceMapper $mapper;
@@ -20,9 +28,9 @@ final class CarreraRepositoryMySQL implements CarreraAcademicaRepository
         $this->mapper = new CarreraPersistenceMapper();
     }
 
-    public function guardar(CarreraAcademica $carreraAcademica): bool
+    public function save(CarreraAcademicaModel $carrera): CarreraAcademicaModel
     {
-        $entity = $this->mapper->fromModelToEntity($carreraAcademica);
+        $entity = $this->mapper->fromModelToEntity($carrera);
 
         $sql = 'INSERT INTO carrera_academica
                 (nombre, numCreditos, numAsignaturas, numSemestres, nivelFormacion, titulo, valorSemestre, universidad, esAcreditada, perfiles, areaConocimiento)
@@ -62,65 +70,25 @@ final class CarreraRepositoryMySQL implements CarreraAcademicaRepository
         );
 
         $ok = $stmt->execute();
+        $newId = (int) $this->conn->insert_id;
         $stmt->close();
 
         if (!$ok) {
             throw new RuntimeException('No fue posible guardar la carrera.');
         }
 
-        return true;
+        $saved = $this->getById($newId);
+
+        if ($saved === null) {
+            throw new RuntimeException('La carrera fue guardada, pero no se pudo recuperar.');
+        }
+
+        return $saved;
     }
 
-    public function listar(): array
+    public function update(CarreraAcademicaModel $carrera): CarreraAcademicaModel
     {
-        $sql = 'SELECT * FROM carrera_academica ORDER BY id DESC';
-        $result = $this->conn->query($sql);
-
-        if (!$result) {
-            return array();
-        }
-
-        $carreras = array();
-
-        while ($row = $result->fetch_assoc()) {
-            $dto = $this->mapper->fromArrayToDto($row);
-            $entity = $this->mapper->fromDtoToEntity($dto);
-            $carreras[] = $this->mapper->fromEntityToModel($entity);
-        }
-
-        return $carreras;
-    }
-
-    public function buscarPorId(int $id): ?CarreraAcademica
-    {
-        $sql = 'SELECT * FROM carrera_academica WHERE id = ? LIMIT 1';
-        $stmt = $this->conn->prepare($sql);
-
-        if (!$stmt) {
-            return null;
-        }
-
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-
-        $result = $stmt->get_result();
-        $row = $result ? $result->fetch_assoc() : null;
-
-        $stmt->close();
-
-        if (!$row) {
-            return null;
-        }
-
-        $dto = $this->mapper->fromArrayToDto($row);
-        $entity = $this->mapper->fromDtoToEntity($dto);
-
-        return $this->mapper->fromEntityToModel($entity);
-    }
-
-    public function actualizar(CarreraAcademica $carreraAcademica): bool
-    {
-        $entity = $this->mapper->fromModelToEntity($carreraAcademica);
+        $entity = $this->mapper->fromModelToEntity($carrera);
 
         $sql = 'UPDATE carrera_academica
                 SET nombre = ?, numCreditos = ?, numAsignaturas = ?, numSemestres = ?, nivelFormacion = ?, titulo = ?, valorSemestre = ?, universidad = ?, esAcreditada = ?, perfiles = ?, areaConocimiento = ?
@@ -168,10 +136,16 @@ final class CarreraRepositoryMySQL implements CarreraAcademicaRepository
             throw new RuntimeException('No fue posible actualizar la carrera.');
         }
 
-        return true;
+        $updated = $this->getById((int) $id);
+
+        if ($updated === null) {
+            throw new RuntimeException('La carrera fue actualizada, pero no se pudo recuperar.');
+        }
+
+        return $updated;
     }
 
-    public function eliminar(int $id): bool
+    public function delete(int $id): void
     {
         $sql = 'DELETE FROM carrera_academica WHERE id = ?';
         $stmt = $this->conn->prepare($sql);
@@ -181,14 +155,58 @@ final class CarreraRepositoryMySQL implements CarreraAcademicaRepository
         }
 
         $stmt->bind_param('i', $id);
-
         $ok = $stmt->execute();
         $stmt->close();
 
         if (!$ok) {
             throw new RuntimeException('No fue posible eliminar la carrera.');
         }
+    }
 
-        return true;
+    public function getById(int $id): ?CarreraAcademicaModel
+    {
+        $sql = 'SELECT * FROM carrera_academica WHERE id = ? LIMIT 1';
+        $stmt = $this->conn->prepare($sql);
+
+        if (!$stmt) {
+            return null;
+        }
+
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        $row = $result ? $result->fetch_assoc() : null;
+
+        $stmt->close();
+
+        if (!$row) {
+            return null;
+        }
+
+        $dto = $this->mapper->fromArrayToDto($row);
+        $entity = $this->mapper->fromDtoToEntity($dto);
+
+        return $this->mapper->fromEntityToModel($entity);
+    }
+
+    public function getAll(): array
+    {
+        $sql = 'SELECT * FROM carrera_academica ORDER BY id DESC';
+        $result = $this->conn->query($sql);
+
+        if (!$result) {
+            return array();
+        }
+
+        $carreras = array();
+
+        while ($row = $result->fetch_assoc()) {
+            $dto = $this->mapper->fromArrayToDto($row);
+            $entity = $this->mapper->fromDtoToEntity($dto);
+            $carreras[] = $this->mapper->fromEntityToModel($entity);
+        }
+
+        return $carreras;
     }
 }

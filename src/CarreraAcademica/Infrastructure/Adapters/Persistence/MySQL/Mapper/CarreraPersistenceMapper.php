@@ -3,9 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../Dto/CarreraPersistenceDto.php';
 require_once __DIR__ . '/../Entity/CarreraEntity.php';
-require_once __DIR__ . '/../../../../../Domain/Entity/CarreraAcademica.php';
-
-use Src\CarreraAcademica\Domain\Entity\CarreraAcademica;
+require_once __DIR__ . '/../../../../../Domain/Models/CarreraAcademicaModel.php';
 
 final class CarreraPersistenceMapper
 {
@@ -45,9 +43,9 @@ final class CarreraPersistenceMapper
         );
     }
 
-    public function fromEntityToModel(CarreraEntity $entity): CarreraAcademica
+    public function fromEntityToModel(CarreraEntity $entity): CarreraAcademicaModel
     {
-        return new CarreraAcademica(
+        return new CarreraAcademicaModel(
             $entity->getId(),
             $entity->getNombre(),
             $entity->getNumCreditos(),
@@ -63,7 +61,7 @@ final class CarreraPersistenceMapper
         );
     }
 
-    public function fromModelToEntity(CarreraAcademica $model): CarreraEntity
+    public function fromModelToEntity(CarreraAcademicaModel $model): CarreraEntity
     {
         return new CarreraEntity(
             $model->getId(),

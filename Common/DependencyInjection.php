@@ -3,14 +3,19 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/ClassLoader.php';
 
-require_once __DIR__ . '/../src/CarreraAcademica/Domain/Entity/CarreraAcademica.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Domain/Repository/CarreraAcademicaRepository.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Domain/Models/CarreraAcademicaModel.php';
 
-require_once __DIR__ . '/../src/CarreraAcademica/Application/UseCase/GuardarCarreraAcademicaUseCase.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Application/UseCase/ListarCarreraAcademicaUseCase.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Application/UseCase/BuscarCarreraAcademicaPorIdUseCase.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Application/UseCase/ActualizarCarreraAcademicaUseCase.php';
-require_once __DIR__ . '/../src/CarreraAcademica/Application/UseCase/EliminarCarreraAcademicaUseCase.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/CreateCarreraAcademicaUseCase.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/GetAllCarrerasAcademicasUseCase.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/GetCarreraAcademicaByIdUseCase.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/UpdateCarreraAcademicaUseCase.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/DeleteCarreraAcademicaUseCase.php';
+
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/SaveCarreraAcademicaPort.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/UpdateCarreraAcademicaPort.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/DeleteCarreraAcademicaPort.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/GetCarreraAcademicaByIdPort.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/GetAllCarrerasAcademicasPort.php';
 
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/In/LoginUseCase.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/GetUserByEmailPort.php';
@@ -19,6 +24,19 @@ require_once __DIR__ . '/../src/CarreraAcademica/Application/Ports/Out/UpdateUse
 
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/LoginCommand.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/ForgotPasswordCommand.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/CreateCarreraAcademicaCommand.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/UpdateCarreraAcademicaCommand.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Commands/DeleteCarreraAcademicaCommand.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Queries/GetCarreraAcademicaByIdQuery.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Dto/Queries/GetAllCarrerasAcademicasQuery.php';
+
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/Mappers/CarreraApplicationMapper.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/CreateCarreraAcademicaService.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/UpdateCarreraAcademicaService.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/DeleteCarreraAcademicaService.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/GetCarreraAcademicaByIdService.php';
+require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/GetAllCarrerasAcademicasService.php';
+
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/LoginService.php';
 require_once __DIR__ . '/../src/CarreraAcademica/Application/Services/ForgotPasswordService.php';
 
@@ -37,13 +55,6 @@ require_once __DIR__ . '/../src/CarreraAcademica/Infrastructure/Adapters/Persist
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Mapper/CarreraAcademicaWebMapper.php';
 require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/CarreraAcademicaController.php';
 
-use Src\CarreraAcademica\Application\UseCase\GuardarCarreraAcademicaUseCase;
-use Src\CarreraAcademica\Application\UseCase\ListarCarreraAcademicaUseCase;
-use Src\CarreraAcademica\Application\UseCase\BuscarCarreraAcademicaPorIdUseCase;
-use Src\CarreraAcademica\Application\UseCase\ActualizarCarreraAcademicaUseCase;
-use Src\CarreraAcademica\Application\UseCase\EliminarCarreraAcademicaUseCase;
-use Src\CarreraAcademica\Domain\Repository\CarreraAcademicaRepository;
-
 final class DependencyInjection
 {
     public static function boot(): void
@@ -51,7 +62,7 @@ final class DependencyInjection
         ClassLoader::register();
     }
 
-    public static function getCarreraAcademicaRepository(): CarreraAcademicaRepository
+    public static function getCarreraAcademicaRepository(): CarreraRepositoryMySQL
     {
         return new CarreraRepositoryMySQL();
     }
@@ -61,29 +72,41 @@ final class DependencyInjection
         return new UserRepositoryMySQL();
     }
 
-    public static function getGuardarCarreraAcademicaUseCase(): GuardarCarreraAcademicaUseCase
+    public static function getCreateCarreraAcademicaUseCase(): CreateCarreraAcademicaService
     {
-        return new GuardarCarreraAcademicaUseCase(self::getCarreraAcademicaRepository());
+        return new CreateCarreraAcademicaService(
+            self::getCarreraAcademicaRepository(),
+            new CarreraApplicationMapper()
+        );
     }
 
-    public static function getListarCarreraAcademicaUseCase(): ListarCarreraAcademicaUseCase
+    public static function getUpdateCarreraAcademicaUseCase(): UpdateCarreraAcademicaService
     {
-        return new ListarCarreraAcademicaUseCase(self::getCarreraAcademicaRepository());
+        return new UpdateCarreraAcademicaService(
+            self::getCarreraAcademicaRepository(),
+            new CarreraApplicationMapper()
+        );
     }
 
-    public static function getBuscarCarreraAcademicaPorIdUseCase(): BuscarCarreraAcademicaPorIdUseCase
+    public static function getDeleteCarreraAcademicaUseCase(): DeleteCarreraAcademicaService
     {
-        return new BuscarCarreraAcademicaPorIdUseCase(self::getCarreraAcademicaRepository());
+        return new DeleteCarreraAcademicaService(
+            self::getCarreraAcademicaRepository()
+        );
     }
 
-    public static function getActualizarCarreraAcademicaUseCase(): ActualizarCarreraAcademicaUseCase
+    public static function getGetCarreraAcademicaByIdUseCase(): GetCarreraAcademicaByIdService
     {
-        return new ActualizarCarreraAcademicaUseCase(self::getCarreraAcademicaRepository());
+        return new GetCarreraAcademicaByIdService(
+            self::getCarreraAcademicaRepository()
+        );
     }
 
-    public static function getEliminarCarreraAcademicaUseCase(): EliminarCarreraAcademicaUseCase
+    public static function getGetAllCarrerasAcademicasUseCase(): GetAllCarrerasAcademicasService
     {
-        return new EliminarCarreraAcademicaUseCase(self::getCarreraAcademicaRepository());
+        return new GetAllCarrerasAcademicasService(
+            self::getCarreraAcademicaRepository()
+        );
     }
 
     public static function getLoginUseCase(): LoginService
@@ -102,11 +125,11 @@ final class DependencyInjection
     public static function getCarreraAcademicaController(): CarreraAcademicaController
     {
         return new CarreraAcademicaController(
-            self::getGuardarCarreraAcademicaUseCase(),
-            self::getListarCarreraAcademicaUseCase(),
-            self::getBuscarCarreraAcademicaPorIdUseCase(),
-            self::getActualizarCarreraAcademicaUseCase(),
-            self::getEliminarCarreraAcademicaUseCase(),
+            self::getCreateCarreraAcademicaUseCase(),
+            self::getGetAllCarrerasAcademicasUseCase(),
+            self::getGetCarreraAcademicaByIdUseCase(),
+            self::getUpdateCarreraAcademicaUseCase(),
+            self::getDeleteCarreraAcademicaUseCase(),
             new CarreraAcademicaWebMapper()
         );
     }

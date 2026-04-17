@@ -5,23 +5,25 @@ require_once __DIR__ . '/../Dto/CreateCarreraAcademicaRequest.php';
 require_once __DIR__ . '/../Dto/UpdateCarreraAcademicaRequest.php';
 require_once __DIR__ . '/../Dto/CarreraAcademicaResponse.php';
 
-require_once __DIR__ . '/../../../../../src/CarreraAcademica/Domain/Entity/CarreraAcademica.php';
-
-use Src\CarreraAcademica\Domain\Entity\CarreraAcademica;
+require_once __DIR__ . '/../../../../../src/CarreraAcademica/Application/Services/Dto/Commands/CreateCarreraAcademicaCommand.php';
+require_once __DIR__ . '/../../../../../src/CarreraAcademica/Application/Services/Dto/Commands/UpdateCarreraAcademicaCommand.php';
+require_once __DIR__ . '/../../../../../src/CarreraAcademica/Application/Services/Dto/Commands/DeleteCarreraAcademicaCommand.php';
+require_once __DIR__ . '/../../../../../src/CarreraAcademica/Application/Services/Dto/Queries/GetCarreraAcademicaByIdQuery.php';
+require_once __DIR__ . '/../../../../../src/CarreraAcademica/Application/Services/Dto/Queries/GetAllCarrerasAcademicasQuery.php';
+require_once __DIR__ . '/../../../../../src/CarreraAcademica/Domain/Models/CarreraAcademicaModel.php';
 
 final class CarreraAcademicaWebMapper
 {
-    public function fromCreateRequestToModel(CreateCarreraAcademicaRequest $request): CarreraAcademica
+    public function fromCreateRequestToCommand(CreateCarreraAcademicaRequest $request): CreateCarreraAcademicaCommand
     {
-        return new CarreraAcademica(
-            null,
+        return new CreateCarreraAcademicaCommand(
             $request->nombre(),
-            (int) $request->numCreditos(),
-            (int) $request->numAsignaturas(),
-            (int) $request->numSemestres(),
+            $request->numCreditos(),
+            $request->numAsignaturas(),
+            $request->numSemestres(),
             $request->nivelFormacion(),
             $request->titulo(),
-            (float) $request->valorSemestre(),
+            $request->valorSemestre(),
             $request->universidad(),
             $request->esAcreditada(),
             $request->perfiles(),
@@ -29,17 +31,17 @@ final class CarreraAcademicaWebMapper
         );
     }
 
-    public function fromUpdateRequestToModel(UpdateCarreraAcademicaRequest $request): CarreraAcademica
+    public function fromUpdateRequestToCommand(UpdateCarreraAcademicaRequest $request): UpdateCarreraAcademicaCommand
     {
-        return new CarreraAcademica(
-            (int) $request->id(),
+        return new UpdateCarreraAcademicaCommand(
+            $request->id(),
             $request->nombre(),
-            (int) $request->numCreditos(),
-            (int) $request->numAsignaturas(),
-            (int) $request->numSemestres(),
+            $request->numCreditos(),
+            $request->numAsignaturas(),
+            $request->numSemestres(),
             $request->nivelFormacion(),
             $request->titulo(),
-            (float) $request->valorSemestre(),
+            $request->valorSemestre(),
             $request->universidad(),
             $request->esAcreditada(),
             $request->perfiles(),
@@ -47,7 +49,22 @@ final class CarreraAcademicaWebMapper
         );
     }
 
-    public function fromModelToResponse(CarreraAcademica $model): CarreraAcademicaResponse
+    public function fromIdToDeleteCommand(string $id): DeleteCarreraAcademicaCommand
+    {
+        return new DeleteCarreraAcademicaCommand($id);
+    }
+
+    public function fromIdToGetByIdQuery(string $id): GetCarreraAcademicaByIdQuery
+    {
+        return new GetCarreraAcademicaByIdQuery($id);
+    }
+
+    public function fromNothingToGetAllQuery(): GetAllCarrerasAcademicasQuery
+    {
+        return new GetAllCarrerasAcademicasQuery();
+    }
+
+    public function fromModelToResponse(CarreraAcademicaModel $model): CarreraAcademicaResponse
     {
         return new CarreraAcademicaResponse(
             (int) $model->getId(),
@@ -68,7 +85,7 @@ final class CarreraAcademicaWebMapper
     public function fromModelsToResponses(array $models): array
     {
         return array_map(
-            fn (CarreraAcademica $model) => $this->fromModelToResponse($model),
+            fn (CarreraAcademicaModel $model) => $this->fromModelToResponse($model),
             $models
         );
     }
