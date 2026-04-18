@@ -1,279 +1,475 @@
 <?php
-$mensaje = "";
-$tipoMensaje = "";
+declare(strict_types=1);
 
-if (isset($_GET["mensaje"])) {
-    if ($_GET["mensaje"] == "ok") {
-        $mensaje = "Registro guardado correctamente.";
-        $tipoMensaje = "exito";
-    } elseif ($_GET["mensaje"] == "error") {
-        $mensaje = "Ocurrió un error al guardar.";
-        $tipoMensaje = "error";
-    } elseif ($_GET["mensaje"] == "vacio") {
-        $mensaje = "Debes completar todos los campos.";
-        $tipoMensaje = "alerta";
+(function (): void {
+    $requestPath = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
+    $publicBase = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php'), '/');
+
+    if ($requestPath !== $publicBase && !str_starts_with($requestPath, $publicBase . '/')) {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+
+        $dest = isset($_SESSION['auth']['id']) ? 'home' : 'auth.login';
+        header('Location: ' . $publicBase . '/index.php?route=' . $dest);
+        exit;
     }
+})();
+
+require_once __DIR__ . '/../Common/ClassLoader.php';
+require_once __DIR__ . '/../Common/DependencyInjection.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/CreateCarreraAcademicaRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/UpdateCarreraAcademicaRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/LoginWebRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/ForgotPasswordWebRequest.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Dto/UserResponse.php';
+require_once __DIR__ . '/../Infrastructure/Entrypoints/Web/Controllers/Mapper/LoginWebMapper.php';
+
+DependencyInjection::boot();
+Flash::start();
+
+function isLoggedIn(): bool
+{
+    return isset($_SESSION['auth']['id']);
 }
-?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Carrera Académica</title>
-    <style>
-        * { box-sizing: border-box; }
+function buildHomeViewData(?string $message = null): array
+{
+    return array(
+        'pageTitle' => 'Inicio',
+        'message' => $message ?? Flash::message(),
+        'success' => Flash::success(),
+    );
+}
 
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #eaf2ff, #f8fbff);
-            color: #1f2937;
+function buildCreateCarreraViewData(): array
+{
+    return array(
+        'pageTitle' => 'Registrar carrera académica',
+        'message' => Flash::message(),
+        'success' => Flash::success(),
+        'errors' => Flash::errors(),
+        'old' => Flash::old(),
+    );
+}
+
+function buildLoginViewData(): array
+{
+    return array(
+        'pageTitle' => 'Iniciar sesión',
+        'message' => Flash::message(),
+        'success' => Flash::success(),
+        'errors' => Flash::errors(),
+        'old' => Flash::old(),
+    );
+}
+
+function buildCreateCarreraAcademicaRequestFromPost(): CreateCarreraAcademicaRequest
+{
+    return new CreateCarreraAcademicaRequest(
+        trim((string) ($_POST['nombre'] ?? '')),
+        trim((string) ($_POST['numCreditos'] ?? '')),
+        trim((string) ($_POST['numAsignaturas'] ?? '')),
+        trim((string) ($_POST['numSemestres'] ?? '')),
+        trim((string) ($_POST['nivelFormacion'] ?? '')),
+        trim((string) ($_POST['titulo'] ?? '')),
+        trim((string) ($_POST['valorSemestre'] ?? '')),
+        trim((string) ($_POST['universidad'] ?? '')),
+        trim((string) ($_POST['esAcreditada'] ?? '')),
+        trim((string) ($_POST['perfiles'] ?? '')),
+        trim((string) ($_POST['areaConocimiento'] ?? ''))
+    );
+}
+
+function buildUpdateCarreraAcademicaRequestFromPost(): UpdateCarreraAcademicaRequest
+{
+    return new UpdateCarreraAcademicaRequest(
+        trim((string) ($_POST['id'] ?? '')),
+        trim((string) ($_POST['nombre'] ?? '')),
+        trim((string) ($_POST['numCreditos'] ?? '')),
+        trim((string) ($_POST['numAsignaturas'] ?? '')),
+        trim((string) ($_POST['numSemestres'] ?? '')),
+        trim((string) ($_POST['nivelFormacion'] ?? '')),
+        trim((string) ($_POST['titulo'] ?? '')),
+        trim((string) ($_POST['valorSemestre'] ?? '')),
+        trim((string) ($_POST['universidad'] ?? '')),
+        trim((string) ($_POST['esAcreditada'] ?? '')),
+        trim((string) ($_POST['perfiles'] ?? '')),
+        trim((string) ($_POST['areaConocimiento'] ?? ''))
+    );
+}
+
+function buildLoginWebRequestFromPost(): LoginWebRequest
+{
+    return new LoginWebRequest(
+        trim((string) ($_POST['email'] ?? '')),
+        trim((string) ($_POST['password'] ?? ''))
+    );
+}
+
+function createCarreraRequestToArray(CreateCarreraAcademicaRequest $request): array
+{
+    return array(
+        'nombre' => $request->nombre(),
+        'numCreditos' => $request->numCreditos(),
+        'numAsignaturas' => $request->numAsignaturas(),
+        'numSemestres' => $request->numSemestres(),
+        'nivelFormacion' => $request->nivelFormacion(),
+        'titulo' => $request->titulo(),
+        'valorSemestre' => $request->valorSemestre(),
+        'universidad' => $request->universidad(),
+        'esAcreditada' => $request->esAcreditada(),
+        'perfiles' => $request->perfiles(),
+        'areaConocimiento' => $request->areaConocimiento(),
+    );
+}
+
+function updateCarreraRequestToArray(UpdateCarreraAcademicaRequest $request): array
+{
+    return array(
+        'id' => $request->id(),
+        'nombre' => $request->nombre(),
+        'numCreditos' => $request->numCreditos(),
+        'numAsignaturas' => $request->numAsignaturas(),
+        'numSemestres' => $request->numSemestres(),
+        'nivelFormacion' => $request->nivelFormacion(),
+        'titulo' => $request->titulo(),
+        'valorSemestre' => $request->valorSemestre(),
+        'universidad' => $request->universidad(),
+        'esAcreditada' => $request->esAcreditada(),
+        'perfiles' => $request->perfiles(),
+        'areaConocimiento' => $request->areaConocimiento(),
+    );
+}
+
+function loginWebRequestToArray(LoginWebRequest $request): array
+{
+    return array(
+        'email' => $request->email(),
+    );
+}
+
+function validateCreateCarreraRequest(CreateCarreraAcademicaRequest $request): array
+{
+    $errors = array();
+
+    $fields = array(
+        'nombre' => $request->nombre(),
+        'numCreditos' => $request->numCreditos(),
+        'numAsignaturas' => $request->numAsignaturas(),
+        'numSemestres' => $request->numSemestres(),
+        'nivelFormacion' => $request->nivelFormacion(),
+        'titulo' => $request->titulo(),
+        'valorSemestre' => $request->valorSemestre(),
+        'universidad' => $request->universidad(),
+        'esAcreditada' => $request->esAcreditada(),
+        'perfiles' => $request->perfiles(),
+        'areaConocimiento' => $request->areaConocimiento(),
+    );
+
+    foreach ($fields as $field => $value) {
+        if ($value === '') {
+            $errors[$field] = 'Este campo es obligatorio.';
         }
+    }
 
-        .encabezado {
-            background: #0d6efd;
-            color: white;
-            padding: 25px 20px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
-        }
+    return $errors;
+}
 
-        .encabezado h1 {
-            margin: 0;
-            font-size: 34px;
-        }
+function validateUpdateCarreraRequest(UpdateCarreraAcademicaRequest $request): array
+{
+    $errors = validateCreateCarreraRequest(
+        new CreateCarreraAcademicaRequest(
+            $request->nombre(),
+            $request->numCreditos(),
+            $request->numAsignaturas(),
+            $request->numSemestres(),
+            $request->nivelFormacion(),
+            $request->titulo(),
+            $request->valorSemestre(),
+            $request->universidad(),
+            $request->esAcreditada(),
+            $request->perfiles(),
+            $request->areaConocimiento()
+        )
+    );
 
-        .encabezado p {
-            margin-top: 8px;
-            font-size: 16px;
-            opacity: 0.95;
-        }
+    if ($request->id() === '') {
+        $errors['id'] = 'El identificador es obligatorio.';
+    }
 
-        .contenedor {
-            max-width: 950px;
-            margin: 30px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-        }
+    return $errors;
+}
 
-        h2 {
-            margin-top: 0;
-            text-align: center;
-            color: #0d3b66;
-        }
+function validateLoginWebRequest(LoginWebRequest $request): array
+{
+    $errors = array();
 
-        .mensaje {
-            padding: 14px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
+    if ($request->email() === '') {
+        $errors['email'] = 'El correo es obligatorio.';
+    }
 
-        .exito {
-            background-color: #e8f8ee;
-            color: #146c43;
-            border: 1px solid #badbcc;
-        }
+    if ($request->password() === '') {
+        $errors['password'] = 'La contraseña es obligatoria.';
+    }
 
-        .error {
-            background-color: #f8d7da;
-            color: #842029;
-            border: 1px solid #f5c2c7;
-        }
+    return $errors;
+}
 
-        .alerta {
-            background-color: #fff3cd;
-            color: #664d03;
-            border: 1px solid #ffecb5;
-        }
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-        }
+function buildForgotPasswordWebRequestFromPost(): ForgotPasswordWebRequest
+{
+    return new ForgotPasswordWebRequest(
+        trim((string) ($_POST['email'] ?? ''))
+    );
+}
 
-        .campo-completo {
-            grid-column: 1 / -1;
-        }
+function forgotPasswordWebRequestToArray(ForgotPasswordWebRequest $request): array
+{
+    return array(
+        'email' => $request->email(),
+    );
+}
 
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: bold;
-        }
+function buildForgotPasswordViewData(): array
+{
+    return array(
+        'pageTitle' => 'Recuperar contraseña',
+        'message' => Flash::message(),
+        'success' => Flash::success(),
+        'errors' => Flash::errors(),
+        'old' => Flash::old(),
+    );
+}
 
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            font-size: 15px;
-            outline: none;
-            transition: 0.2s ease;
-        }
+function sendPasswordRecoveryEmail(string $email, string $name, string $tempPassword): void
+{
+    $templateFile = __DIR__ . '/../Infrastructure/Entrypoints/Web/Presentation/Views/emails/forgot-password.php';
 
-        input:focus, select:focus, textarea:focus {
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
-        }
+    ob_start();
+    extract(
+        array(
+            'email' => $email,
+            'name' => $name,
+            'tempPassword' => $tempPassword,
+        ),
+        EXTR_SKIP
+    );
+    require $templateFile;
+    $htmlBody = (string) ob_get_clean();
 
-        textarea {
-            resize: vertical;
-            min-height: 110px;
-        }
+    $subject = '=?UTF-8?B?' . base64_encode('Recuperación de contraseña') . '?=';
+    $headers = implode("\r\n", array(
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'From: Carrera Académica <no-reply@carrera-academica.local>',
+    ));
 
-        .botones {
-            margin-top: 25px;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
+    @mail($email, $subject, $htmlBody, $headers);
+}
 
-        .btn {
-            text-decoration: none;
-            border: none;
-            padding: 13px 18px;
-            border-radius: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 15px;
-        }
+function validateForgotPasswordWebRequest(ForgotPasswordWebRequest $request): array
+{
+    $errors = array();
 
-        .btn-guardar {
-            background: #0d6efd;
-            color: white;
-        }
+    if ($request->email() === '') {
+        $errors['email'] = 'El correo es obligatorio.';
+    }
 
-        .btn-ver {
-            background: #198754;
-            color: white;
-            display: inline-block;
-        }
+    return $errors;
+}
 
-        .pie {
-            text-align: center;
-            margin-top: 18px;
-            color: #6b7280;
-            font-size: 14px;
-        }
+$route = isset($_GET['route']) ? trim((string) $_GET['route']) : 'home';
+$routes = WebRoutes::routes();
 
-        @media (max-width: 768px) {
-            .grid {
-                grid-template-columns: 1fr;
+if (!isset($routes[$route])) {
+    http_response_code(404);
+    View::render('home', buildHomeViewData('Ruta no encontrada.'));
+    exit;
+}
+
+$definition = $routes[$route];
+$httpMethod = strtoupper((string) $_SERVER['REQUEST_METHOD']);
+
+if ($httpMethod !== $definition['method']) {
+    http_response_code(405);
+    View::render('home', buildHomeViewData('Método HTTP no permitido.'));
+    exit;
+}
+
+$publicActions = array(
+    'home',
+    'login',
+    'authenticate',
+    'logout',
+    'forgot',
+    'forgot.send'
+);
+
+if (!in_array($definition['action'], $publicActions, true) && !isLoggedIn()) {
+    Flash::setMessage('Debes iniciar sesión para acceder a esta sección.');
+    View::redirect('auth.login');
+}
+
+try {
+    switch ($definition['action']) {
+        case 'home':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            View::render('home', $controller->home());
+            break;
+
+        case 'create':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            View::render('carreras/create', $controller->create());
+            break;
+
+        case 'store':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $request = buildCreateCarreraAcademicaRequestFromPost();
+            $errors = validateCreateCarreraRequest($request);
+
+            if (!empty($errors)) {
+                Flash::setOld(createCarreraRequestToArray($request));
+                Flash::setErrors($errors);
+                Flash::setMessage('Corrige los errores del formulario.');
+                View::redirect('carreras.create');
             }
 
-            .contenedor {
-                margin: 15px;
-                padding: 20px;
+            $controller->store($request);
+            Flash::setSuccess('Carrera académica registrada correctamente.');
+            View::redirect('carreras.index');
+            break;
+
+        case 'index':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            View::render('carreras/list', $controller->index());
+            break;
+
+        case 'edit':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $id = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+            View::render('carreras/edit', $controller->edit($id));
+            break;
+
+        case 'update':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $request = buildUpdateCarreraAcademicaRequestFromPost();
+            $errors = validateUpdateCarreraRequest($request);
+
+            if (!empty($errors)) {
+                Flash::setOld(updateCarreraRequestToArray($request));
+                Flash::setErrors($errors);
+                Flash::setMessage('Corrige los errores del formulario.');
+                View::redirect('carreras.edit&id=' . urlencode($request->id()));
             }
 
-            .encabezado h1 {
-                font-size: 28px;
+            $controller->update($request);
+            Flash::setSuccess('Carrera académica actualizada correctamente.');
+            View::redirect('carreras.index');
+            break;
+
+        case 'delete':
+            $controller = DependencyInjection::getCarreraAcademicaController();
+            $id = trim((string) ($_POST['id'] ?? ''));
+
+            if ($id === '') {
+                Flash::setMessage('El identificador es obligatorio.');
+                View::redirect('carreras.index');
             }
-        }
-    </style>
-</head>
-<body>
 
-    <div class="encabezado">
-        <h1>Sistema de Gestión de Carrera Académica</h1>
-        <p>Registro y administración de información académica con PHP y MySQL</p>
-    </div>
+            $controller->delete($id);
+            Flash::setSuccess('Carrera académica eliminada correctamente.');
+            View::redirect('carreras.index');
+            break;
 
-    <div class="contenedor">
-        <h2>Formulario de Registro</h2>
+        case 'login':
+            View::render('auth/login', buildLoginViewData());
+            break;
 
-        <?php if ($mensaje != ""): ?>
-            <div class="mensaje <?php echo $tipoMensaje; ?>">
-                <?php echo htmlspecialchars($mensaje); ?>
-            </div>
-        <?php endif; ?>
+        case 'authenticate':
+            $request = buildLoginWebRequestFromPost();
+            $errors = validateLoginWebRequest($request);
 
-        <form action="guardar.php" method="POST">
-            <div class="grid">
-                <div>
-                    <label for="nombre">Nombre</label>
-                    <input type="text" name="nombre" id="nombre" required>
-                </div>
+            if (!empty($errors)) {
+                Flash::setOld(loginWebRequestToArray($request));
+                Flash::setErrors($errors);
+                Flash::setMessage('Corrige los errores del formulario.');
+                View::redirect('auth.login');
+            }
 
-                <div>
-                    <label for="nivelFormacion">Nivel de formación</label>
-                    <select name="nivelFormacion" id="nivelFormacion" required>
-                        <option value="">Seleccione</option>
-                        <option value="Técnico">Técnico</option>
-                        <option value="Tecnólogo">Tecnólogo</option>
-                        <option value="Profesional">Profesional</option>
-                        <option value="Especialización">Especialización</option>
-                        <option value="Maestría">Maestría</option>
-                        <option value="Doctorado">Doctorado</option>
-                    </select>
-                </div>
+            $mapper = new LoginWebMapper();
+            $command = $mapper->fromRequestToCommand($request);
+            $userModel = DependencyInjection::getLoginUseCase()->execute($command);
+            $user = $mapper->fromModelToResponse($userModel);
 
-                <div>
-                    <label for="numCreditos">Número de créditos</label>
-                    <input type="number" name="numCreditos" id="numCreditos" min="0" required>
-                </div>
+            $_SESSION['auth'] = array(
+                'id' => $user->getId(),
+                'name' => $user->getName(),
+                'email' => $user->getEmail(),
+                'role' => $user->getRole(),
+            );
 
-                <div>
-                    <label for="numAsignaturas">Número de asignaturas</label>
-                    <input type="number" name="numAsignaturas" id="numAsignaturas" min="0" required>
-                </div>
+            Flash::setSuccess('Inicio de sesión exitoso.');
+            View::redirect('home');
+            break;
 
-                <div>
-                    <label for="numSemestres">Número de semestres</label>
-                    <input type="number" name="numSemestres" id="numSemestres" min="0" required>
-                </div>
+        case 'logout':
+            unset($_SESSION['auth']);
+            Flash::setSuccess('Sesión cerrada correctamente.');
+            View::redirect('auth.login');
+            break;
 
-                <div>
-                    <label for="valorSemestre">Valor del semestre</label>
-                    <input type="number" name="valorSemestre" id="valorSemestre" min="0" step="0.01" required>
-                </div>
+case 'forgot':
+    View::render('auth/forgot-password', buildForgotPasswordViewData());
+    break;
+    
+case 'show':
+    $controller = DependencyInjection::getCarreraAcademicaController();
+    $id = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 
-                <div>
-                    <label for="titulo">Título otorgado</label>
-                    <input type="text" name="titulo" id="titulo" required>
-                </div>
+    if ($id === '') {
+        Flash::setMessage('Debes seleccionar una carrera para ver el detalle.');
+        View::redirect('carreras.index');
+    }
 
-                <div>
-                    <label for="universidad">Universidad</label>
-                    <input type="text" name="universidad" id="universidad" required>
-                </div>
+    View::render('carreras/show', $controller->show($id));
+    break;
 
-                <div>
-                    <label for="esAcreditada">¿Es acreditada?</label>
-                    <select name="esAcreditada" id="esAcreditada" required>
-                        <option value="">Seleccione</option>
-                        <option value="Sí">Sí</option>
-                        <option value="No">No</option>
-                    </select>
-                </div>
+case 'forgot.send':
+    $request = buildForgotPasswordWebRequestFromPost();
+    $errors = validateForgotPasswordWebRequest($request);
 
-                <div>
-                    <label for="areaConocimiento">Área de conocimiento</label>
-                    <input type="text" name="areaConocimiento" id="areaConocimiento" required>
-                </div>
+    if (!empty($errors)) {
+        Flash::setOld(forgotPasswordWebRequestToArray($request));
+        Flash::setErrors($errors);
+        Flash::setMessage('Corrige los errores del formulario.');
+        View::redirect('auth.forgot');
+    }
 
-                <div class="campo-completo">
-                    <label for="perfiles">Perfiles</label>
-                    <textarea name="perfiles" id="perfiles" required></textarea>
-                </div>
-            </div>
+    $command = new ForgotPasswordCommand($request->email());
+    $result = DependencyInjection::getForgotPasswordUseCase()->execute($command);
 
-            <div class="botones">
-                <button type="submit" class="btn btn-guardar">Guardar registro</button>
-                <a href="listar.php" class="btn btn-ver">Ver registros</a>
-            </div>
-        </form>
+    if ($result !== null) {
+        sendPasswordRecoveryEmail(
+            (string) $result['email'],
+            (string) $result['name'],
+            (string) $result['tempPassword']
+        );
+    }
 
-        <div class="pie">
-            Proyecto académico - CRUD de Carrera Académica
-        </div>
-    </div>
-
-</body>
-</html>
+    Flash::setSuccess('Si el correo existe y está activo, se generó una contraseña temporal y se envió la recuperación.');
+    View::redirect('auth.forgot');
+    break;
+    }
+    
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo '<pre style="white-space:pre-wrap;font-family:monospace;">';
+    echo 'ERROR REAL:' . "\n\n";
+    echo htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "\n\n";
+    echo 'Archivo: ' . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8') . "\n";
+    echo 'Línea: ' . $e->getLine() . "\n\n";
+    echo $e->getTraceAsString();
+    echo '</pre>';
+    exit;
+}
